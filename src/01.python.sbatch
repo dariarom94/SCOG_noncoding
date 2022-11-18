@@ -4,14 +4,14 @@
 #SBATCH --partition tinyq
 #SBATCH --qos tinyq
 #SBATCH --mem 32G
-#SBATCH --array=1-9
+#SBATCH --array=1-10
 
 
 export SCRATCH_PATH=/nobackup/lab_bock/users/dromanovskaia/mytmp
 export TMPDIR=$SCRATCH_PATH/Rtmp
 
 
-ANNOT_TABLE="/home/dromanovskaia/projects/SCOG_episcanpy/data/noncoding_bed_files/bedlist.txt"
+ANNOT_TABLE="/home/dromanovskaia/projects/SCOG_noncoding/data/noncoding_bed_files/bedlist.txt"
 
 sample=`awk -F"\t" 'NR=='$SLURM_ARRAY_TASK_ID'{print $1}' ${ANNOT_TABLE}`
 echo $sample

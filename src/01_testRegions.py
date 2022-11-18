@@ -19,6 +19,8 @@ import os
 import argparse
 import sys
 
+from sklearn.metrics import silhouette_samples, silhouette_score
+
 def arg_parser(parser):
     """
     Global options for pipeline.
@@ -45,7 +47,7 @@ def arg_parser(parser):
 def main():
     #paths setup
 
-    data_path = "/nobackup/lab_bock/users/dromanovskaia/projects/SCOG_episcanpy/data/"
+    data_path = "/nobackup/lab_bock/users/dromanovskaia/projects/SCOG_noncoding/data/"
 
     ## which bed file
     parser = argparse.ArgumentParser(
@@ -55,7 +57,7 @@ def main():
     regions_id = args.which_bed
     thr_nf = args.thr
     
-    results_path = os.path.join("/nobackup/lab_bock/users/dromanovskaia/projects/SCOG_episcanpy/results_analysis/", regions_id, "n_features_" + thr_nf)
+    results_path = os.path.join("/nobackup/lab_bock/users/dromanovskaia/projects/SCOG_noncoding/results_analysis/", regions_id, "n_features_" + thr_nf)
     print("working with " + regions_id + "and nfeature threshold of " + thr_nf)
     thr_nf=int(thr_nf)
     
@@ -64,9 +66,10 @@ def main():
     os.makedirs(results_path)
 
 ## reading in annotation data
-    anno = ad.read(data_path + "10x-ATAC-Brain5k.h5ad")
-    anno_per_bc = {bc: anno for bc, anno in zip(anno.obs.index, anno.obs.cell_type)}
-
+ #   anno = ad.read(data_path + "10x-ATAC-Brain5k.h5ad")
+  #  anno_per_bc = {bc: anno for bc, anno in zip(anno.obs.index, anno.obs.cell_type)}
+    anno_new = pd.read_csv(os.path.join(data_path, "annotation.csv"), index_col = 0)
+    anno_per_bc = {bc: anno for bc, anno in zip(anno_new.index, anno_new.anno)}
 
     fragments_file=os.path.join(data_path, "atac_v1_adult_brain_fresh_5k_fragments.tsv.gz")
 
@@ -144,12 +147,16 @@ def main():
     umapdf = pd.DataFrame(adata.obsm['X_umap'], index= adata.obs.index)
     umapdf.columns = ["UMAP1", "UMAP2"]
     adata.obs['region'] = regions_id
-
+    ##silhouette score
+    adata.obs['silhouette_cellType'] = silhouette_samples(adata.obsm['X_umap'],  adata.obs['cell_type'])
     umapdf.join(adata.obs[["cell_type", "louvain_r1.5", "louvain_r0.5", "region"]]).to_csv(os.path.join(results_path, regions_id+"results_summary.csv"))
-
-
+   
     adata.write(os.path.join(results_path, regions_id+'_data_processed.h5ad'))
-    
+    ## sil. scores
+    sil_scores={}
+    for tocalc in ["cell_type", "louvain_r1.5", "louvain_r0.5"]:
+        sil_scores[tocalc] = [silhouette_score(adata.obsm['X_umap'],  adata.obs[tocalc])]
+    pd.DataFrame(sil_scores, index=[regions_id]).to_csv(os.path.join(results_path, 'silhouette_scores.csv'))
     print("Done!")
 
 if __name__ ==  '__main__':
